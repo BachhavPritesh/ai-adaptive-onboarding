@@ -176,7 +176,7 @@ Graph-Based Prioritization:
 # ⚡ Installation
 
 ```bash
-git clone https://github.com/your-username/ai-onboarding-engine.git
+git clone https://github.com/anand880441-source/ai-adaptive-onboarding
 cd ai-onboarding-engine
 npm install
 npm run server
@@ -212,10 +212,10 @@ docker run -p 3000:3000 onboarding-ai
 
 ---
 
-# 👨‍💻 Author
+# 👨‍💻 Team
 
-**Your Name**
-🔗 https://github.com/your-username
+**Error 404**
+🔗 https://github.com/anand880441-source/ai-adaptive-onboarding
 
 ---
 
