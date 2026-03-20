@@ -14,6 +14,7 @@ import Navbar from './components/Navbar';
 import BackgroundEffects from './components/BackgroundEffects';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
+import SkillAnalysis from './pages/SkillAnalysis';
 
 const AnimatedRoutes = () => {
   const location = useLocation();
@@ -47,6 +48,7 @@ const AnimatedRoutes = () => {
               <Route path="/dashboard" element={<Dashboard searchQuery={searchQuery} />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/skill-analysis" element={<SkillAnalysis />} />
             </Routes>
           </motion.div>
         </AnimatePresence>
