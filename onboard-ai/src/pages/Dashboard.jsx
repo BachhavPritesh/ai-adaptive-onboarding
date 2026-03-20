@@ -1,18 +1,133 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { RefreshCw, BarChart3, AlertCircle, Map, CheckCircle2, PlayCircle, Lock, Layout, Terminal, Cloud, Database, FileCode, Search, Share2, Info, Layers, TrendingUp, Target, ArrowRight, BrainCircuit, ChevronDown, BarChart2 } from 'lucide-react';
+import axios from 'axios';
+import { RefreshCw, BarChart3, AlertCircle, Map, CheckCircle2, PlayCircle, Lock, Layout, Terminal, Cloud, Database, FileCode, Search, Share2, Info, Layers, TrendingUp, Target, ArrowRight, BrainCircuit, ChevronDown, BarChart2, Clock } from 'lucide-react';
 
 const Dashboard = ({ searchQuery = "" }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [viewDropdown, setViewDropdown] = useState(false);
-  const data = location.state?.data || (localStorage.getItem('dashboardData') ? JSON.parse(localStorage.getItem('dashboardData')) : null);
-if (data) {
-  localStorage.removeItem('dashboardData');
-}
+  const [moduleProgress, setModuleProgress] = useState({});
+  const [loadingProgress, setLoadingProgress] = useState(true);
+  
+  const data = location.state?.data || (sessionStorage.getItem('dashboardData') ? JSON.parse(sessionStorage.getItem('dashboardData')) : null);
+  
+  useEffect(() => {
+    if (data) {
+      sessionStorage.setItem('dashboardData', JSON.stringify(data));
+      loadProgress();
+    } else {
+      setLoadingProgress(false);
+    }
+  }, [data]);
 
-  // If no data, show empty state or redirect
+  const loadProgress = async () => {
+    let progressMap = {};
+    
+    const localProgress = JSON.parse(sessionStorage.getItem('moduleProgress') || '{}');
+    if (Object.keys(localProgress).length > 0) {
+      progressMap = localProgress;
+    }
+    
+    const token = sessionStorage.getItem('token');
+    if (token) {
+      try {
+        const response = await axios.get('http://localhost:5000/api/user/progress', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data.success && response.data.data) {
+          const apiProgress = {};
+          (response.data.data.moduleProgress || []).forEach(p => {
+            apiProgress[p.moduleId] = p;
+          });
+          progressMap = { ...progressMap, ...apiProgress };
+        }
+      } catch (error) {
+        console.log('Could not load progress from API, using local storage');
+      }
+    }
+    
+    setModuleProgress(progressMap);
+    setLoadingProgress(false);
+  };
+
+  const saveRoadmap = async () => {
+    const token = sessionStorage.getItem('token');
+    if (!token || !data) return;
+    
+    try {
+      await axios.post('http://localhost:5000/api/user/roadmap', {
+        resumeSummary: data.resume?.summary,
+        skills: data.resume?.skills,
+        skillGaps: data.pathway?.skillGaps,
+        roadmap: data.pathway?.roadmap
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log('Roadmap saved successfully');
+    } catch (error) {
+      console.log('Could not save roadmap:', error.message);
+    }
+  };
+
+  useEffect(() => {
+    if (data) {
+      saveRoadmap();
+    }
+  }, [data]);
+
+  const startModule = async (moduleId, title) => {
+    const progressData = JSON.parse(sessionStorage.getItem('moduleProgress') || '{}');
+    progressData[moduleId] = { moduleId, title, status: 'in-progress', progress: 0, startedAt: new Date().toISOString() };
+    sessionStorage.setItem('moduleProgress', JSON.stringify(progressData));
+    
+    setModuleProgress(prev => ({
+      ...prev,
+      [moduleId]: { moduleId, title, status: 'in-progress', progress: 0 }
+    }));
+    
+    window.dispatchEvent(new Event('moduleProgressChanged'));
+    
+    const token = sessionStorage.getItem('token');
+    if (token) {
+      try {
+        await axios.post(`http://localhost:5000/api/user/module/start/${moduleId}`, 
+          { title },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (error) {
+        console.log('API save failed, progress saved locally');
+      }
+    }
+  };
+
+  const completeModule = async (moduleId, title) => {
+    const progressData = JSON.parse(sessionStorage.getItem('moduleProgress') || '{}');
+    progressData[moduleId] = { moduleId, title, status: 'completed', progress: 100, completedAt: new Date().toISOString() };
+    sessionStorage.setItem('moduleProgress', JSON.stringify(progressData));
+    
+    setModuleProgress(prev => ({
+      ...prev,
+      [moduleId]: { moduleId, title, status: 'completed', progress: 100 }
+    }));
+    
+    window.dispatchEvent(new Event('moduleProgressChanged'));
+    
+    const token = sessionStorage.getItem('token');
+    if (token) {
+      try {
+        await axios.post(`http://localhost:5000/api/user/module/complete/${moduleId}`, 
+          { title },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (error) {
+        console.log('API save failed, saved locally');
+      }
+    }
+  };
+
   if (!data) {
     return (
       <div className="empty-dashboard-v4">
@@ -29,6 +144,7 @@ if (data) {
   }
 
   const { resume, pathway } = data;
+  const resumeSummary = resume?.summary || '';
   const resumeSkills = (resume?.skills || []).filter(skill => 
     skill.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
     skill.category?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -39,15 +155,28 @@ if (data) {
   const roadmap = (pathway?.roadmap || []).filter(node => 
     node.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
     node.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ).map((node, index) => ({
+    ...node,
+    id: node.id || `module-${index}`,
+    title: node.title || `Module ${index + 1}`
+  }));
 
-  const completedModules = roadmap.filter(node => node.completed).length;
+  const completedCount = roadmap.filter(n => moduleProgress[n.id]?.status === 'completed').length;
+  const inProgressCount = roadmap.filter(n => moduleProgress[n.id]?.status === 'in-progress').length;
   const totalModules = roadmap.length;
-  const progressPercent = totalModules > 0 ? (completedModules / totalModules) * 100 : 0;
+  const progressPercent = totalModules > 0 ? (completedCount / totalModules) * 100 : 0;
 
   const levelToPercent = (level) => {
     const levels = { 'Beginner': 25, 'Intermediate': 50, 'Advanced': 75, 'Expert': 100 };
     return levels[level] || 50;
+  };
+
+  const getModuleStatus = (moduleId) => {
+    return moduleProgress[moduleId]?.status || 'not-started';
+  };
+
+  const getModuleProgress = (moduleId) => {
+    return moduleProgress[moduleId]?.progress || 0;
   };
 
   const containerVariants = {
@@ -127,8 +256,19 @@ if (data) {
         </div>
       </header>
 
+      {resumeSummary && (
+        <motion.div variants={itemVariants} className="glass-card-v4 resume-summary-card">
+          <div className="summary-icon-v4">
+            <BrainCircuit size={20} />
+          </div>
+          <div className="summary-content-v4">
+            <h4>AI Profile Analysis</h4>
+            <p>{resumeSummary}</p>
+          </div>
+        </motion.div>
+      )}
+
       <div className="dash-grid-v4">
-        {/* Extracted Skills Card */}
         <motion.div
           variants={cardVariants}
           whileHover="hover"
@@ -179,7 +319,6 @@ if (data) {
           </div>
         </motion.div>
 
-        {/* Skill Gap Analysis Card */}
         <motion.div
           variants={cardVariants}
           whileHover="hover"
@@ -195,7 +334,7 @@ if (data) {
             <span className="badge-v4-outline warning">{skillGaps.length} GAPS</span>
           </div>
 
-<div className="gap-list-v4">
+          <div className="gap-list-v4">
             {skillGaps.map((gap, i) => {
               const currentPercent = levelToPercent(gap.currentLevel);
               const requiredPercent = levelToPercent(gap.requiredLevel);
@@ -250,7 +389,6 @@ if (data) {
         </motion.div>
       </div>
 
-      {/* Learning Path Section */}
       <motion.div
         variants={itemVariants}
         className="roadmap-container-v4"
@@ -276,7 +414,7 @@ if (data) {
                 initial={{ width: 0 }}
                 animate={{ width: `${progressPercent}%` }}
                 className="progress-fill-v4"
-              ></motion.div>
+              />
             </div>
             <motion.button whileHover={{ scale: 1.1 }} className="share-btn-v4">
               <Share2 size={16} />
@@ -284,60 +422,133 @@ if (data) {
           </div>
         </div>
 
+        <div className="progress-stats-row">
+          <div className="stat-pill completed">
+            <CheckCircle2 size={14} /> {completedCount} Completed
+          </div>
+          <div className="stat-pill in-progress">
+            <PlayCircle size={14} /> {inProgressCount} In Progress
+          </div>
+          <div className="stat-pill remaining">
+            <Lock size={14} /> {totalModules - completedCount - inProgressCount} Remaining
+          </div>
+        </div>
+
         <div className="modern-timeline-v4">
-          {roadmap.map((node, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.2 }}
-              className={`timeline-node-v4 in-progress`}
-            >
-              <div className="node-marker-v4">
-                <div className="marker-dot-v4">{i + 1}</div>
-                <div className="node-line-v4"></div>
-              </div>
-
-              <div className="node-card-v4 premium-glass">
-                <div className="node-content-v4">
-                  <div className="node-top-v4">
-                    <span className="node-id-v4">PHASE {i + 1}</span>
-                    <span className={`status-pill-v4 in-progress`}>
-                      ADAPTIVE
-                    </span>
+          {roadmap.map((node, i) => {
+            const status = getModuleStatus(node.id);
+            const progress = getModuleProgress(node.id);
+            
+            return (
+              <motion.div
+                key={node.id || i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.2 }}
+                className={`timeline-node-v4 ${status}`}
+              >
+                <div className="node-marker-v4">
+                  <div className={`marker-dot-v4 ${status}`}>
+                    {status === 'completed' ? <CheckCircle2 size={14} /> : i + 1}
                   </div>
-                  <h4>{node.title}</h4>
-                  <p className="node-desc-v4">{node.description}</p>
-
-                  {/* Reasoning Trace */}
-                  <div className="reasoning-trace-v4">
-                    <div className="trace-header">
-                      <BrainCircuit size={14} />
-                      <span>REASONING TRACE</span>
-                    </div>
-                    <p>{node.reasoning}</p>
-                  </div>
-
-                  <div className="node-meta-v4">
-                    <span><RefreshCw size={12} className="spin-slow" /> Grounded in Catalog</span>
-                    <span className={`priority-indicator-v4 high`}>
-                      HIGH PRIORITY
-                    </span>
-                  </div>
+                  <div className="node-line-v4"></div>
                 </div>
 
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="btn-resume-v4"
-                  onClick={() => alert(`Initializing module: ${node.title}`)}
-                >
-                  START MODULE <ArrowRight size={16} />
-                </motion.button>
-              </div>
-            </motion.div>
-          ))}
+                <div className="node-card-v4 premium-glass">
+                  <div className="node-content-v4">
+                    <div className="node-top-v4">
+                      <span className="node-id-v4">PHASE {i + 1}</span>
+                      <span className={`status-pill-v4 ${status}`}>
+                        {status === 'completed' ? 'COMPLETED' : status === 'in-progress' ? 'IN PROGRESS' : 'NOT STARTED'}
+                      </span>
+                    </div>
+                    <h4>{node.title}</h4>
+                    <p className="node-desc-v4">{node.description}</p>
+
+                    <div className="reasoning-trace-v4">
+                      <div className="trace-header">
+                        <BrainCircuit size={14} />
+                        <span>AI REASONING</span>
+                      </div>
+                      <p>{node.reasoning}</p>
+                    </div>
+
+                    {status === 'in-progress' && (
+                      <div className="module-progress-bar-v4">
+                        <div className="module-progress-track-v4">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${progress}%` }}
+                            className="module-progress-fill-v4"
+                          />
+                        </div>
+                        <span className="module-progress-text-v4">{progress}%</span>
+                      </div>
+                    )}
+
+                    <div className="node-meta-v4">
+                      {node.duration && (
+                        <span><Clock size={12} /> {node.duration}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {status === 'not-started' && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="btn-resume-v4"
+                      onClick={() => {
+                        sessionStorage.setItem('currentModule', JSON.stringify({
+                          id: node.id,
+                          title: node.title,
+                          description: node.description,
+                          duration: node.duration,
+                          reasoning: node.reasoning
+                        }));
+                        startModule(node.id, node.title);
+                        navigate(`/study/${node.id}`);
+                      }}
+                    >
+                      START MODULE <ArrowRight size={16} />
+                    </motion.button>
+                  )}
+                  
+                  {status === 'in-progress' && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="btn-resume-v4 continue-btn"
+                      onClick={() => {
+                        sessionStorage.setItem('currentModule', JSON.stringify({
+                          id: node.id,
+                          title: node.title,
+                          description: node.description,
+                          duration: node.duration,
+                          reasoning: node.reasoning
+                        }));
+                        navigate(`/study/${node.id}`);
+                      }}
+                    >
+                      CONTINUE <ArrowRight size={16} />
+                    </motion.button>
+                  )}
+                  
+                  {status === 'completed' && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="btn-resume-v4 completed-btn"
+                      disabled
+                    >
+                      COMPLETED <CheckCircle2 size={16} />
+                    </motion.button>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
           {roadmap.length === 0 && (
             <div className="no-roadmap-v4">
               <p>No training modules required for this transition.</p>
@@ -350,4 +561,3 @@ if (data) {
 };
 
 export default Dashboard;
-

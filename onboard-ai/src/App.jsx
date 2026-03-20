@@ -15,18 +15,20 @@ import BackgroundEffects from './components/BackgroundEffects';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import SkillAnalysis from './pages/SkillAnalysis';
+import StudyModule from './pages/StudyModule';
 
 const AnimatedRoutes = () => {
   const location = useLocation();
   const [searchQuery, setSearchQuery] = React.useState('');
   const isAuthPage = location.pathname === '/signin' || location.pathname === '/signup';
+  const isStudyPage = location.pathname.startsWith('/study/');
 
   return (
     <div className="app-container">
-      <BackgroundEffects />
-      <Navbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      {!isStudyPage && <BackgroundEffects />}
+      {!isStudyPage && <Navbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
 
-      <main style={isAuthPage ? { padding: 0 } : {}}>
+      <main style={isAuthPage || isStudyPage ? { padding: 0 } : {}}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -49,6 +51,7 @@ const AnimatedRoutes = () => {
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/skill-analysis" element={<SkillAnalysis />} />
+              <Route path="/study/:moduleId" element={<StudyModule />} />
             </Routes>
           </motion.div>
         </AnimatePresence>

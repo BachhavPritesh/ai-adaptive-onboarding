@@ -1,9 +1,11 @@
-﻿const path = require('path');
+const path = require('path');
 const fs = require('fs');
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
+const axios = require('axios');
 
-// Handle file upload
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
 const uploadFiles = async (req, res) => {
   try {
     console.log('📁 Files received:', req.files);
@@ -18,58 +20,46 @@ const uploadFiles = async (req, res) => {
     const resumeFile = req.files.resume[0];
     const jdFile = req.files.jd[0];
 
-    // Extract text from files
     const resumeText = await extractTextFromFile(resumeFile);
     const jdText = await extractTextFromFile(jdFile);
 
-    console.log('📝 Resume content preview:', resumeText.substring(0, 200));
-    console.log('📝 JD content preview:', jdText.substring(0, 200));
+    console.log('📝 Resume extracted, length:', resumeText.length);
+    console.log('📝 JD extracted, length:', jdText.length);
 
-    // Extract skills from both files
-    const resumeSkills = extractSkillsFromText(resumeText);
-    const requiredSkills = extractSkillsFromText(jdText);
+    if (!resumeText.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Could not extract text from resume. Please ensure the PDF is readable.'
+      });
+    }
 
-    // Identify skill gaps
-    const skillGaps = [];
-    const resumeSkillNames = resumeSkills.map(s => s.name.toLowerCase());
-    
-    requiredSkills.forEach(reqSkill => {
-      const existingSkill = resumeSkills.find(s => s.name.toLowerCase() === reqSkill.name.toLowerCase());
-      if (!existingSkill) {
-        skillGaps.push({
-          name: reqSkill.name,
-          currentLevel: 'none',
-          requiredLevel: reqSkill.level
-        });
-      } else if (existingSkill.level !== reqSkill.level) {
-        skillGaps.push({
-          name: reqSkill.name,
-          currentLevel: existingSkill.level,
-          requiredLevel: reqSkill.level
-        });
-      }
-    });
+    if (!jdText.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Could not extract text from job description. Please ensure the file is readable.'
+      });
+    }
 
-    // Generate personalized roadmap based on gaps
-    const roadmap = generateRoadmap(skillGaps, resumeSkills);
+    const geminiAnalysis = await analyzeWithGemini(resumeText, jdText);
 
     const mockData = {
       resume: {
-        skills: resumeSkills,
+        skills: geminiAnalysis.resumeSkills,
         fileName: resumeFile.originalname,
-        fileSize: resumeFile.size
+        fileSize: resumeFile.size,
+        summary: geminiAnalysis.resumeSummary
       },
       pathway: {
-        skillGaps: skillGaps,
-        roadmap: roadmap
+        skillGaps: geminiAnalysis.skillGaps,
+        roadmap: geminiAnalysis.roadmap
       }
     };
 
-    console.log('✅ Sending analyzed data to frontend');
-    
+    console.log('✅ Gemini analyzed:', geminiAnalysis.resumeSkills.length, 'skills found');
+
     res.status(200).json({
       success: true,
-      message: 'Files uploaded and analyzed successfully',
+      message: 'Files analyzed successfully with AI',
       data: mockData
     });
 
@@ -83,7 +73,113 @@ const uploadFiles = async (req, res) => {
   }
 };
 
-// Extract text from files
+async function analyzeWithGemini(resumeText, jdText) {
+  const prompt = `You are an expert HR recruiter and career coach. Analyze the following resume and job description.
+
+RESUME:
+${resumeText}
+
+JOB DESCRIPTION:
+${jdText}
+
+Return a JSON response with this exact structure:
+{
+  "resumeSummary": "A brief 2-3 sentence summary of the candidate's profile based on their resume",
+  "resumeSkills": [
+    {
+      "name": "Skill Name",
+      "level": "Beginner/Intermediate/Advanced/Expert",
+      "category": "Technical/Soft/Tools/Database/DevOps/Cloud"
+    }
+  ],
+  "skillGaps": [
+    {
+      "name": "Missing/Occupational Skill",
+      "currentLevel": "Beginner/Intermediate/Advanced/Expert/none",
+      "requiredLevel": "Beginner/Intermediate/Advanced/Expert",
+      "priority": "Critical/High/Medium/Low",
+      "reason": "Brief explanation of why this skill is needed"
+    }
+  ],
+  "roadmap": [
+    {
+      "title": "Learning Module Title",
+      "description": "Detailed description of what to learn",
+      "reasoning": "AI reasoning for why this module is recommended",
+      "duration": "estimated time (e.g., '2 weeks')"
+    }
+  ]
+}
+
+Rules:
+- Extract ALL technical skills from resume (programming languages, frameworks, tools, databases, cloud platforms)
+- Extract ALL soft skills mentioned (communication, leadership, teamwork, etc.)
+- Identify skill gaps by comparing resume skills vs job requirements
+- Prioritize gaps: Critical = completely missing, High = major gap, Medium = minor gap, Low = nice to have
+- Generate 4-6 personalized learning modules that address the skill gaps
+- Be specific with skill names (e.g., "React.js" not just "React", "AWS EC2/S3" not just "AWS")
+- Level definitions: Beginner = <1 year, Intermediate = 1-3 years, Advanced = 3-5 years, Expert = 5+ years
+
+Return ONLY the JSON, no other text.`;
+
+  try {
+    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    
+    const response = await axios.post(GEMINI_URL, {
+      contents: [{
+        parts: [{ text: prompt }]
+      }],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 8192
+      }
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const responseText = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!responseText) {
+      throw new Error('No response from Gemini API');
+    }
+
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    
+    if (!jsonMatch) {
+      throw new Error('Could not parse Gemini response as JSON');
+    }
+
+    const analysis = JSON.parse(jsonMatch[0]);
+
+    return {
+      resumeSummary: analysis.resumeSummary || 'Professional with diverse technical skills',
+      resumeSkills: analysis.resumeSkills || [],
+      skillGaps: analysis.skillGaps || [],
+      roadmap: analysis.roadmap || []
+    };
+
+  } catch (error) {
+    console.error('Gemini API Error:', error.message);
+    console.error('Error details:', error.response?.data);
+    
+    if (error.response?.status === 403) {
+      throw new Error('Invalid Gemini API key. Please check your GEMINI_API_KEY in .env file.');
+    }
+    
+    if (error.response?.status === 429) {
+      throw new Error('Gemini rate limit exceeded. Please try again in a few minutes.');
+    }
+    
+    if (error.response?.data?.error?.message) {
+      throw new Error(`Gemini API Error: ${error.response.data.error.message}`);
+    }
+
+    throw new Error(`Gemini analysis failed: ${error.message}`);
+  }
+}
+
 async function extractTextFromFile(file) {
   const filePath = file.path;
   const ext = path.extname(file.originalname).toLowerCase();
@@ -101,121 +197,8 @@ async function extractTextFromFile(file) {
     }
   } catch (error) {
     console.error(`Error extracting text:`, error);
-    return fs.readFileSync(filePath, 'utf8');
+    throw error;
   }
-}
-
-// Extract skills from text
-function extractSkillsFromText(text) {
-  const skills = [];
-  const lowerText = text.toLowerCase();
-  
-  const skillDatabase = {
-    'python': { level: 'advanced', category: 'Technical' },
-    'java': { level: 'intermediate', category: 'Technical' },
-    'javascript': { level: 'intermediate', category: 'Technical' },
-    'react': { level: 'beginner', category: 'Technical' },
-    'node.js': { level: 'intermediate', category: 'Technical' },
-    'nodejs': { level: 'intermediate', category: 'Technical' },
-    'django': { level: 'intermediate', category: 'Technical' },
-    'spring': { level: 'intermediate', category: 'Technical' },
-    'spring boot': { level: 'intermediate', category: 'Technical' },
-    'aws': { level: 'beginner', category: 'Cloud' },
-    'docker': { level: 'beginner', category: 'DevOps' },
-    'kubernetes': { level: 'beginner', category: 'DevOps' },
-    'mongodb': { level: 'intermediate', category: 'Database' },
-    'postgresql': { level: 'intermediate', category: 'Database' },
-    'typescript': { level: 'beginner', category: 'Technical' },
-    'git': { level: 'intermediate', category: 'Tools' },
-    'communication': { level: 'advanced', category: 'Soft' }
-  };
-  
-  for (const [skill, info] of Object.entries(skillDatabase)) {
-    if (lowerText.includes(skill)) {
-      skills.push({
-        name: skill.charAt(0).toUpperCase() + skill.slice(1),
-        level: info.level,
-        category: info.category
-      });
-    }
-  }
-  
-  // Add default skills if none found
-  if (skills.length === 0) {
-    skills.push(
-      { name: 'JavaScript', level: 'intermediate', category: 'Technical' },
-      { name: 'Communication', level: 'advanced', category: 'Soft' }
-    );
-  }
-  
-  return skills;
-}
-
-// Generate roadmap based on skill gaps
-function generateRoadmap(skillGaps, currentSkills) {
-  const roadmap = [];
-  
-  // Priority: missing skills first
-  const sortedGaps = [...skillGaps].sort((a, b) => {
-    if (a.currentLevel === 'none') return -1;
-    if (b.currentLevel === 'none') return 1;
-    return 0;
-  });
-  
-  sortedGaps.forEach((gap, index) => {
-    const courseMap = {
-      'TypeScript': {
-        title: 'TypeScript Mastery',
-        description: 'Learn TypeScript from basics to advanced patterns',
-        reasoning: `Required for ${gap.requiredLevel} level proficiency`
-      },
-      'AWS': {
-        title: 'AWS Cloud Practitioner',
-        description: 'AWS fundamentals and cloud architecture',
-        reasoning: `Essential for cloud deployment and scaling`
-      },
-      'Docker': {
-        title: 'Docker Containerization',
-        description: 'Container basics and orchestration',
-        reasoning: `Critical for modern deployment workflows`
-      },
-      'Kubernetes': {
-        title: 'Kubernetes Fundamentals',
-        description: 'Container orchestration and cluster management',
-        reasoning: `Required for scalable microservices`
-      },
-      'React': {
-        title: 'Advanced React Development',
-        description: 'React hooks, state management, and patterns',
-        reasoning: `Build on your ${currentSkills.find(s => s.name === 'React')?.level || 'current'} React skills`
-      }
-    };
-    
-    const course = courseMap[gap.name] || {
-      title: `${gap.name} Fundamentals`,
-      description: `Comprehensive training in ${gap.name}`,
-      reasoning: `Required to bridge the gap from ${gap.currentLevel} to ${gap.requiredLevel}`
-    };
-    
-    roadmap.push({
-      title: course.title,
-      description: course.description,
-      reasoning: course.reasoning,
-      duration: `${3 + index * 2} weeks`
-    });
-  });
-  
-  // Add default roadmap if no gaps
-  if (roadmap.length === 0) {
-    roadmap.push({
-      title: 'Advanced Technical Skills',
-      description: 'Enhance your existing skills with advanced concepts',
-      reasoning: 'Based on your current skill level',
-      duration: '4 weeks'
-    });
-  }
-  
-  return roadmap;
 }
 
 module.exports = {

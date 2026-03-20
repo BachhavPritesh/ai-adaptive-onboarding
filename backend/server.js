@@ -12,7 +12,6 @@ connectDB();
 
 const app = express();
 
-// CORS - allow all origins
 app.use(cors({
   origin: true,
   credentials: true
@@ -35,6 +34,11 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Test route
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'Test route works' });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
@@ -44,13 +48,14 @@ app.use((err, req, res, next) => {
   });
 });
 
+// 404 handler
+app.use((req, res) => {
+  console.log('404 for:', req.method, req.path);
+  res.status(404).json({ message: 'Route not found' });
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-  console.log(`📍 http://localhost:${PORT}`);
-  console.log(`📋 POST /api/upload - Upload files`);
-  console.log(`📋 POST /api/auth/register - Register`);
-  console.log(`📋 POST /api/auth/login - Login`);
-  console.log(`📋 GET  /api/user/profile - Get Profile`);
-  console.log(`📋 GET  /api/user/settings - Get Settings`);
+  console.log('✅ Server running on port', PORT);
+  console.log('📍 http://localhost:' + PORT);
 });

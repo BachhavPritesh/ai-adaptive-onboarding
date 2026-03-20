@@ -1,9 +1,9 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const upload = require('../config/upload');
 const { uploadFiles } = require('../controllers/uploadController');
+const { generateStudyContent } = require('../controllers/studyController');
 
-// POST /api/upload - Handle file upload
 router.post(
   '/upload',
   upload.fields([
@@ -12,5 +12,7 @@ router.post(
   ]),
   uploadFiles
 );
+
+router.post('/generate-study', generateStudyContent);
 
 module.exports = router;
