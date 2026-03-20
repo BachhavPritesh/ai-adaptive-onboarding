@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { RefreshCw, BarChart3, AlertCircle, Map, CheckCircle2, PlayCircle, Lock, Layout, Terminal, Cloud, Database, FileCode, Search, Share2, Info, Layers, TrendingUp, Target, ArrowRight, BrainCircuit } from 'lucide-react';
+import { RefreshCw, BarChart3, AlertCircle, Map, CheckCircle2, PlayCircle, Lock, Layout, Terminal, Cloud, Database, FileCode, Search, Share2, Info, Layers, TrendingUp, Target, ArrowRight, BrainCircuit, ChevronDown, BarChart2 } from 'lucide-react';
 
 const Dashboard = ({ searchQuery = "" }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [viewDropdown, setViewDropdown] = useState(false);
   const data = location.state?.data || (localStorage.getItem('dashboardData') ? JSON.parse(localStorage.getItem('dashboardData')) : null);
 if (data) {
   localStorage.removeItem('dashboardData');
@@ -28,17 +29,26 @@ if (data) {
   }
 
   const { resume, pathway } = data;
-  const resumeSkills = (resume.skills || []).filter(skill => 
-    skill.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    skill.category.toLowerCase().includes(searchQuery.toLowerCase())
+  const resumeSkills = (resume?.skills || []).filter(skill => 
+    skill.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    skill.category?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const skillGaps = (pathway.skillGaps || []).filter(gap => 
-    gap.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const skillGaps = (pathway?.skillGaps || []).filter(gap => 
+    gap.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const roadmap = (pathway.roadmap || []).filter(node => 
-    node.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    node.description.toLowerCase().includes(searchQuery.toLowerCase())
+  const roadmap = (pathway?.roadmap || []).filter(node => 
+    node.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    node.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const completedModules = roadmap.filter(node => node.completed).length;
+  const totalModules = roadmap.length;
+  const progressPercent = totalModules > 0 ? (completedModules / totalModules) * 100 : 0;
+
+  const levelToPercent = (level) => {
+    const levels = { 'Beginner': 25, 'Intermediate': 50, 'Advanced': 75, 'Expert': 100 };
+    return levels[level] || 50;
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -79,15 +89,42 @@ if (data) {
           <h1 className="dash-title-v4">Adaptive <span className="onboarding-gradient">Roadmap</span></h1>
           <p className="dash-subtitle-v4">AI-powered neural analysis of your technical trajectory</p>
         </motion.div>
-        <motion.button
-          variants={itemVariants}
-          whileHover={{ scale: 1.05, rotate: 180 }}
-          transition={{ rotate: { duration: 0.6 } }}
-          className="btn-resync-v4"
-          onClick={() => navigate('/upload')}
-        >
-          <RefreshCw size={16} /> NEW SYNTHESIS
-        </motion.button>
+        <div className="header-actions-v4">
+          <div className="view-dropdown-v4">
+            <motion.button
+              variants={itemVariants}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="btn-resync-v4"
+              onClick={() => setViewDropdown(!viewDropdown)}
+            >
+              <BarChart2 size={16} /> VIEWS <ChevronDown size={14} />
+            </motion.button>
+            {viewDropdown && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="dropdown-menu-v4"
+              >
+                <button onClick={() => { navigate('/dashboard', { state: { data } }); setViewDropdown(false); }}>
+                  <Map size={16} /> Adaptive Roadmap
+                </button>
+                <button onClick={() => { navigate('/skill-analysis', { state: { data } }); setViewDropdown(false); }}>
+                  <BarChart3 size={16} /> Skill Analysis
+                </button>
+              </motion.div>
+            )}
+          </div>
+          <motion.button
+            variants={itemVariants}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="btn-resync-v4"
+            onClick={() => navigate('/upload')}
+          >
+            <RefreshCw size={16} className="spin-once" /> NEW SYNTHESIS
+          </motion.button>
+        </div>
       </header>
 
       <div className="dash-grid-v4">
@@ -121,7 +158,16 @@ if (data) {
                 </div>
                 <div className="skill-info-v2">
                   <span className="skill-name-v2">{skill.name}</span>
-                  <span className="skill-level-v2">{skill.level.toUpperCase()}</span>
+                  <div className="skill-progress-container">
+                    <div className="skill-progress-bar">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${levelToPercent(skill.level)}%` }}
+                        className={`skill-progress-fill ${skill.level?.toLowerCase()}`}
+                      />
+                    </div>
+                    <span className="skill-level-v2">{skill.level?.toUpperCase()}</span>
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -149,8 +195,12 @@ if (data) {
             <span className="badge-v4-outline warning">{skillGaps.length} GAPS</span>
           </div>
 
-          <div className="gap-list-v4">
-            {skillGaps.map((gap, i) => (
+<div className="gap-list-v4">
+            {skillGaps.map((gap, i) => {
+              const currentPercent = levelToPercent(gap.currentLevel);
+              const requiredPercent = levelToPercent(gap.requiredLevel);
+              const gapPercent = requiredPercent - currentPercent;
+              return (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -162,15 +212,34 @@ if (data) {
                   <div className="gap-icon-v4"><Target size={18} /></div>
                   <div>
                     <h4>{gap.name}</h4>
-                    <p>Current: {gap.currentLevel} â†’ Required: {gap.requiredLevel}</p>
+                    <div className="gap-progress-wrapper">
+                      <div className="gap-progress-track">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${currentPercent}%` }}
+                          className="gap-progress-current"
+                        />
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${requiredPercent}%` }}
+                          className="gap-progress-required"
+                        />
+                      </div>
+                      <div className="gap-levels-labels">
+                        <span>Current: {gap.currentLevel}</span>
+                        <span>Required: {gap.requiredLevel}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="gap-metrics-v4">
-                  <span className="gap-percent-v4">GAP</span>
-                  <span className={`gap-priority-v4 critical`}>REQUIRED</span>
+                  <span className="gap-percent-v4">{gapPercent}%</span>
+                  <span className={`gap-priority-v4 ${gap.priority?.toLowerCase() || 'medium'}`}>
+                    {gap.priority || 'Required'}
+                  </span>
                 </div>
               </motion.div>
-            ))}
+            )})}
             {skillGaps.length === 0 && (
               <div className="perfect-match-v4">
                 <CheckCircle2 size={32} color="var(--accent-blue)" />
@@ -199,13 +268,13 @@ if (data) {
 
           <div className="completion-stats-v4">
             <div className="stat-text-v4">
-              <span className="label">ESTIMATED EFFORT</span>
-              <span className="value">{roadmap.length * 4} HRS</span>
+              <span className="label">COMPLETION</span>
+              <span className="value">{Math.round(progressPercent)}%</span>
             </div>
             <div className="progress-track-v4">
               <motion.div
                 initial={{ width: 0 }}
-                animate={{ width: '0%' }}
+                animate={{ width: `${progressPercent}%` }}
                 className="progress-fill-v4"
               ></motion.div>
             </div>
