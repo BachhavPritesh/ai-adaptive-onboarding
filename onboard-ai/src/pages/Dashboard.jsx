@@ -1,9 +1,9 @@
-﻿import React from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { RefreshCw, BarChart3, AlertCircle, Map, CheckCircle2, PlayCircle, Lock, Layout, Terminal, Cloud, Database, FileCode, Search, Share2, Info, Layers, TrendingUp, Target, ArrowRight, BrainCircuit } from 'lucide-react';
 
-const Dashboard = () => {
+const Dashboard = ({ searchQuery = "" }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const data = location.state?.data || (localStorage.getItem('dashboardData') ? JSON.parse(localStorage.getItem('dashboardData')) : null);
@@ -28,9 +28,17 @@ if (data) {
   }
 
   const { resume, pathway } = data;
-  const resumeSkills = resume.skills || [];
-  const skillGaps = pathway.skillGaps || [];
-  const roadmap = pathway.roadmap || [];
+  const resumeSkills = (resume.skills || []).filter(skill => 
+    skill.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    skill.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const skillGaps = (pathway.skillGaps || []).filter(gap => 
+    gap.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const roadmap = (pathway.roadmap || []).filter(node => 
+    node.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    node.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -254,6 +262,7 @@ if (data) {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="btn-resume-v4"
+                  onClick={() => alert(`Initializing module: ${node.title}`)}
                 >
                   START MODULE <ArrowRight size={16} />
                 </motion.button>
