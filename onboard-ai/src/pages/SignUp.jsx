@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -6,6 +6,12 @@ import { Zap, Github, Mail, Lock, User, ArrowRight, ShieldCheck, Cpu, Layout } f
 
 const SignUp = () => {
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (sessionStorage.getItem('token')) {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -34,8 +40,8 @@ const SignUp = () => {
       });
 
       if (response.data.success) {
-        localStorage.setItem('token', response.data.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.data));
+        sessionStorage.setItem('token', response.data.data.token);
+        sessionStorage.setItem('user', JSON.stringify(response.data.data));
         navigate('/dashboard');
       }
     } catch (err) {
