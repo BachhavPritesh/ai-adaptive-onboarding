@@ -1,7 +1,7 @@
 ﻿import axios from 'axios';
 
-// HARDCODED PRODUCTION URL
-const API_URL = 'https://ai-adaptive-onboarding.onrender.com/api';
+// Base URL should NOT include /api
+const API_URL = 'https://ai-adaptive-onboarding.onrender.com';
 
 const api = axios.create({
   baseURL: API_URL,
