@@ -157,19 +157,21 @@ Graph-Based Prioritization:
 
 # 🖥️ Screenshots
 
-> 📸 Add your UI images here
+> 📸 Application UI Preview
 
-```
-/screenshots/dashboard.png
-/screenshots/upload.png
-/screenshots/analysis.png
-```
+![Screenshot 1](https://res.cloudinary.com/dzmso2ukz/image/upload/v1774101720/Screenshot_2026-03-21_171921_cmlp8y.png)
+![Screenshot 2](https://res.cloudinary.com/dzmso2ukz/image/upload/v1774101732/Screenshot_2026-03-21_192745_lcinvu.png)
+![Screenshot 3](https://res.cloudinary.com/dzmso2ukz/image/upload/v1774101746/Screenshot_2026-03-21_192901_ghb1v8.png)
+![Screenshot 4](https://res.cloudinary.com/dzmso2ukz/image/upload/v1774101754/Screenshot_2026-03-21_192919_vzoeja.png)
+![Screenshot 5](https://res.cloudinary.com/dzmso2ukz/image/upload/v1774101766/Screenshot_2026-03-21_192927_eankga.png)
+![Screenshot 6](https://res.cloudinary.com/dzmso2ukz/image/upload/v1774101777/Screenshot_2026-03-21_193053_unklnz.png)
+![Screenshot 7](https://res.cloudinary.com/dzmso2ukz/image/upload/v1774101786/Screenshot_2026-03-21_193107_dxzlve.png)
 
 ---
 
 # 🎥 Demo
 
-👉 Add your demo video link here
+👉 https://drive.google.com/file/d/15N-BvWIl7lqe7Jvf61GYzzsOLYQJq3FF/view?usp=sharing
 
 ---
 
