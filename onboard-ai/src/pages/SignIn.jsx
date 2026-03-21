@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Zap, Github, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const AUTH_BASE_URL = API_BASE_URL.replace('/api', '');
+
 const SignIn = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -26,7 +29,7 @@ const SignIn = () => {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
         email: formData.email,
         password: formData.password
       });
@@ -61,7 +64,6 @@ const SignIn = () => {
   return (
     <div className="auth-container-v4">
       <div className="auth-split-v4">
-        {/* Left Side: Neural Visual */}
         <motion.div
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
@@ -118,7 +120,6 @@ const SignIn = () => {
           </div>
         </motion.div>
 
-        {/* Right Side: Form */}
         <motion.div
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
@@ -136,10 +137,9 @@ const SignIn = () => {
               <p>Access your neural dashboard</p>
             </motion.div>
 
-            {/* Social Login Buttons */}
             <motion.div variants={itemVariants} className="social-auth-v4">
               <a 
-                href="https://ai-adaptive-onboarding.onrender.com/api/auth/google" 
+                href={`${AUTH_BASE_URL}/api/auth/google`}
                 className="social-btn-v4"
                 style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", cursor: "pointer" }}
               >
@@ -147,7 +147,7 @@ const SignIn = () => {
                 Google
               </a>
               <a 
-                href="https://ai-adaptive-onboarding.onrender.com/api/auth/github" 
+                href={`${AUTH_BASE_URL}/api/auth/github`}
                 className="social-btn-v4"
                 style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", cursor: "pointer" }}
               >
@@ -240,4 +240,3 @@ const SignIn = () => {
 };
 
 export default SignIn;
-

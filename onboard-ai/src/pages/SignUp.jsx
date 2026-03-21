@@ -1,4 +1,6 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState } from "react";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const AUTH_BASE_URL = API_BASE_URL.replace("/api", "");
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -268,4 +270,5 @@ const SignUp = () => {
 };
 
 export default SignUp;
+
 
