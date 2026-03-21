@@ -96,10 +96,10 @@ const About = () => {
 
         <div className="team-grid-v3">
           {[
-            { name: "Alex Rivers", role: "CEO & Founder", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&h=200&auto=format&fit=crop" },
-            { name: "Dr. Elena Vosh", role: "Head of AI Research", img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&h=200&auto=format&fit=crop" },
-            { name: "Marcus Chen", role: "Chief Architect", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&h=200&auto=format&fit=crop" },
-            { name: "Sarah Jenkins", role: "Product Design", img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&h=200&auto=format&fit=crop" }
+            { name: "Alex Rivers", role: "CEO & Founder", img: "/portrait_alex_rivers.png" },
+            { name: "Dr. Elena Vosh", role: "Head of AI Research", img: "/portrait_elena_vosh.png" },
+            { name: "Marcus Chen", role: "Chief Architect", img: "/portrait_marcus_chen.png" },
+            { name: "Sarah Jenkins", role: "Product Design", img: "/portrait_sarah_jenkins.png" }
           ].map((member, i) => (
             <div key={i} className="team-card-v3">
               <div className="team-avatar-wrapper-v3">
