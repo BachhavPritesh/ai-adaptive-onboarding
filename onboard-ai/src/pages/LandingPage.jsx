@@ -93,7 +93,7 @@ const LandingPage = () => {
         >
           <div className="mockup-card premium-glass">
             <img
-              src="/dashboard_mockup_onboardai_1773946761134.png"
+              src="/dashboard_mockup_new.png"
               alt="Dashboard Preview"
               className="mockup-img"
             />
