@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import { 
   BrainCircuit, Clock, BookOpen, Target, CheckCircle2, 
   ChevronLeft, ChevronRight, Play, Pause, ArrowLeft,
@@ -111,7 +111,7 @@ const StudyModule = () => {
     }
 
     try {
-      const response = await axios.post('http://localhost:5000/api/upload/generate-study', {
+      const response = await api.post('/api/upload/generate-study', {
         moduleId: moduleId || moduleData.id,
         title: moduleData.title,
         description: moduleData.description
@@ -664,3 +664,4 @@ const StudyModule = () => {
 };
 
 export default StudyModule;
+

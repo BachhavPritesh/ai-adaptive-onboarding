@@ -1,7 +1,7 @@
 ﻿import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import api from "../services/api";
 import { FileText, Briefcase, CloudUpload, ClipboardList, CheckCircle2, RotateCw, X, Sparkles, AlertCircle } from 'lucide-react';
 
 const UploadInterface = () => {
@@ -293,5 +293,6 @@ const UploadInterface = () => {
 };
 
 export default UploadInterface;
+
 
 

@@ -3,9 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Zap, Github, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-const AUTH_BASE_URL = API_BASE_URL.replace('/api', '');
+import { API_URL, AUTH_URL } from '../config';
 
 const SignIn = () => {
   const navigate = useNavigate();
@@ -29,7 +27,7 @@ const SignIn = () => {
     setError('');
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+      const response = await axios.post(`${API_URL}/auth/login`, {
         email: formData.email,
         password: formData.password
       });
@@ -139,7 +137,7 @@ const SignIn = () => {
 
             <motion.div variants={itemVariants} className="social-auth-v4">
               <a 
-                href={`${AUTH_BASE_URL}/api/auth/google`}
+                href={`${AUTH_URL}/api/auth/google`}
                 className="social-btn-v4"
                 style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", cursor: "pointer" }}
               >
@@ -147,7 +145,7 @@ const SignIn = () => {
                 Google
               </a>
               <a 
-                href={`${AUTH_BASE_URL}/api/auth/github`}
+                href={`${AUTH_URL}/api/auth/github`}
                 className="social-btn-v4"
                 style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", cursor: "pointer" }}
               >
